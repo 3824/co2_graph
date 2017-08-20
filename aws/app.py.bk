@@ -1,0 +1,83 @@
+import dash
+from dash.dependencies import Input, Output, Event
+import dash_core_components as dcc
+import dash_html_components as html
+import datetime
+from sqlalchemy import create_engine
+import plotly
+
+import pandas as pd
+
+app = dash.Dash(__name__)
+
+app.layout = html.Div(
+    html.Div([
+        html.H4("温度と湿度とCO2"),
+        html.Div(id="live-update-text"),
+        dcc.Graph(id="live-update-graph"),
+        dcc.Interval(
+            id="interval-component",
+            interval=1000 # ms
+        )
+    ])
+)
+
+@app.callback(Output("live-update-text", "children"),
+              events=[Event("interval-component", "interval")])
+def update_metrics():
+    str = load_data()
+    style = {"padding":"5px", "fontSize":"16px"}
+    return [
+        html.Span(str, style=style)
+    ]
+
+def load_data():
+    '''
+    :return: CO2, 気温，湿度
+    '''
+    return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+query = "select * from sensor where temp<> -1 and shi<> -1 and obs_time> %(start_time)s"
+engine = create_engine("mysql+pymysql://miyanishi:miyanishi@localhost:3306/log")
+
+@app.callback(Output('live-update-graph','figure'),
+              events=[Event('interval-component', 'interval')])
+def update_graph_live():
+    start_time = (datetime.datetime.now() - datetime.timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S')
+    df = pd.read_sql_query(query,engine,params={"start_time": start_time})
+
+    fig = plotly.tools.make_subplots(rows=3,cols=1)
+    fig['layout']['margin'] = {
+        'l': 30, 'r': 10, 'b': 30, 't': 10
+    }
+    fig['layout']['legend'] = {'x': 100, 'y': 1, 'xanchor': 'left'}
+
+
+    fig.append_trace({
+        "x": df["obs_time"],
+        "y": df["temp"],
+        "type": "scatter",
+        "name": "温度",
+        "mode": "lines+markers"
+    }, 1, 1)
+    fig.append_trace({
+        "x": df["obs_time"],
+        "y": df["shi"],
+        "type": "scatter",
+        "name": "湿度",
+        "mode": "lines+markers"
+    }, 2, 1)
+    fig.append_trace({
+        "x": df["obs_time"],
+        "y": df["co2"],
+        "type": "scatter",
+        "name": "CO2",
+        "mode": "lines+markers"
+    }, 3, 1)
+
+    return fig
+
+
+
+if __name__ == '__main__':
+    app.run_server(host='0.0.0.0', debug=True)
