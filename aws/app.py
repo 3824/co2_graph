@@ -64,12 +64,21 @@ def update_graph_live():
     #### ¥
     pred_time = (df["obs_time"].max() + datetime.timedelta(seconds=1))  # .strftime('%Y-%m-%d %H:%M:%S')
     temp_df = df.set_index("obs_time")
-    temp_model = arima_model.ARIMA(temp_df["temp"], order=[4, 0, 0]).fit()
-    pred_temp = temp_model.forecast()[0][0]
-    shi_model = arima_model.ARIMA(temp_df["shi"], order=[4, 0, 0]).fit()
-    pred_shi = shi_model.forecast()[0][0]
-    co2_model = arima_model.ARIMA(temp_df["co2"], order=[4, 0, 0]).fit()
-    pred_co2 = co2_model.forecast()[0][0]
+    try:
+        temp_model = arima_model.ARIMA(temp_df["temp"], order=[4, 0, 0]).fit()
+        pred_temp = temp_model.forecast()[0][0]
+    except:
+        pred_temp = temp_df.tail(1)["temp"].values[0]
+    try:
+        shi_model = arima_model.ARIMA(temp_df["shi"], order=[4, 0, 0]).fit()
+        pred_shi = shi_model.forecast()[0][0]
+    except:
+        pred_shi = temp_df.tail(1)["shi"].values[0]
+    try:
+        co2_model = arima_model.ARIMA(temp_df["co2"], order=[4, 0, 0]).fit()
+        pred_co2 = co2_model.forecast()[0][0]
+    except:
+        pred_co2 = temp_df.tail(1)["co2"].values[0]
 
     fig.append_trace({
         "x": df["obs_time"],
