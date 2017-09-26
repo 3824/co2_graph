@@ -1,0 +1,9 @@
+dash-core-components==0.13.0-rc5
+dash-html-components
+dash-renderer
+dash
+Flask
+Flask-Compress
+Flask-SeaSurf
+Flask-Caching
+plotly

@@ -6,6 +6,7 @@ import datetime
 from sqlalchemy import create_engine
 import plotly
 from statsmodels.tsa import arima_model
+from loremipsum import get_sentences
 
 import pandas as pd
 
@@ -13,15 +14,58 @@ app = dash.Dash(__name__)
 
 app.layout = html.Div([
     html.Div([
-        html.H4("温度と湿度とCO2"),
-        html.Div(id="live-update-text"),
-        dcc.Graph(id="live-update-graph"),
-        dcc.Interval(
-            id="interval-component",
-            interval=1000 # ms
-        )
-    ])
+        dcc.Tabs(
+            tabs=[
+                {"label":"real time","value":0},
+                {"label":"history","value":1}
+            ],
+            value=2,
+            id="tabs",
+            vertical=True
+        ),
+        html.Div(id="tab-output")
+    ], style={
+        "width": "80%",
+        "fontFamily": "Sans-Serif",
+        "margin-left": "auto",
+        "margin-right": "auto"
+    }),
+    html.Div([
+        html.Div([
+            html.H4("温度と湿度とCO2"),
+            html.Div(id="live-update-text"),
+            dcc.Graph(id="live-update-graph", animate=True),
+            dcc.Interval(
+                id="interval-component",
+                interval=1000 # ms
+            )
+        ]),
+        html.Div([
+            html.H3("test"),
+            # TODO DatePickRangeで期間指定してグラフ表示＋変化点表示
+            dcc.DatePickerRange(
+                start_date = datetime.datetime(2017,9,1),
+                end_date = datetime.datetime.today(),
+                day_size = 30,
+                calendar_orientation = "vertical",
+                display_format = "YYYY-MM-DD"
+            )
+        ])
+    ], style={
+        "width":"80%",
+        "fontFamily": "Sans-Serif",
+        "margin-left": "auto",
+        "margin-right": "auto"
+    })
 ])
+
+@app.callback(Output('tab-output', 'children'), [Input('tabs', 'value')])
+def display_content(value):
+    if value == 0:
+        return 0
+    elif value == 1:
+        return 1
+
 
 @app.callback(Output("live-update-text", "children"),
               events=[Event("interval-component", "interval")])
@@ -46,7 +90,7 @@ pred_co2_timeline = []
 pred_co2_values = []
 
 query = "select * from sensor where temp<> -1 and shi<> -1 and obs_time> %(start_time)s"
-engine = create_engine("mysql+pymysql://miyanishi:miyanishi@localhost:3306/log")
+engine = create_engine("mysql+pymysql://miyanishi:miyanishi@52.69.118.173:3306/log")
 
 @app.callback(Output('live-update-graph','figure'),
               events=[Event('interval-component', 'interval')])

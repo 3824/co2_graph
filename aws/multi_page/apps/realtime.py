@@ -9,9 +9,9 @@ from statsmodels.tsa import arima_model
 
 import pandas as pd
 
-app = dash.Dash(__name__)
+from aws.multi_page.app import app
 
-app.layout = html.Div([
+layout = html.Div([
     html.Div([
         html.H4("温度と湿度とCO2"),
         html.Div(id="live-update-text"),
@@ -22,6 +22,9 @@ app.layout = html.Div([
         )
     ])
 ])
+
+query = "select * from sensor where temp<> -1 and shi<> -1 and obs_time> %(start_time)s"
+engine = create_engine("mysql+pymysql://miyanishi:miyanishi@52.69.118.173:3306/log")
 
 @app.callback(Output("live-update-text", "children"),
               events=[Event("interval-component", "interval")])
@@ -45,14 +48,12 @@ pred_shi_values = []
 pred_co2_timeline = []
 pred_co2_values = []
 
-query = "select * from sensor where temp<> -1 and shi<> -1 and obs_time> %(start_time)s"
-engine = create_engine("mysql+pymysql://miyanishi:miyanishi@localhost:3306/log")
-
 @app.callback(Output('live-update-graph','figure'),
               events=[Event('interval-component', 'interval')])
 def update_graph_live():
     start_time = (datetime.datetime.now() - datetime.timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S')
     df = pd.read_sql_query(query,engine,params={"start_time": start_time})
+    #df["obs_time"] = pd.to_datetime(df["obs_time"])
 
     fig = plotly.tools.make_subplots(rows=3,cols=1)#,vertical_spacing=100)
     fig['layout']['margin'] = {
@@ -60,8 +61,6 @@ def update_graph_live():
     }
     fig['layout']['legend'] = {'x': 100, 'y': 1, 'xanchor': 'left'}
 
-    print(df["obs_time"].max())
-    #### ¥
     pred_time = (df["obs_time"].max() + datetime.timedelta(seconds=1))  # .strftime('%Y-%m-%d %H:%M:%S')
     temp_df = df.set_index("obs_time")
     try:
@@ -203,7 +202,3 @@ def update_graph_live():
 
     return fig
 
-
-
-if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', debug=True)
